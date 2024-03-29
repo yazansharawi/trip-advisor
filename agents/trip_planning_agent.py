@@ -1,7 +1,10 @@
 import requests
 import xml.etree.ElementTree as ET
 
+querystring = {"Max_Results": "10"}
+
 class TripPlanningAgent:
+    
     def __init__(self, departure, destination, date, rapidapi_key):
         self.departure = departure
         self.destination = destination
@@ -10,7 +13,6 @@ class TripPlanningAgent:
 
     def find_flights(self):
         url = f"https://timetable-lookup.p.rapidapi.com/TimeTable/{self.departure}/{self.destination}/{self.date}/"
-        querystring = {"Max_Results": "10"}
 
         headers = {
             "X-RapidAPI-Key": self.rapidapi_key,
@@ -19,6 +21,52 @@ class TripPlanningAgent:
 
         response = requests.get(url, headers=headers, params=querystring)
         return response.text
+    
+
+    def find_hotels(self, region_id, checkin_date, checkout_date, rapidapi_key):
+        url = "https://hotels-com-provider.p.rapidapi.com/v2/hotels/search"
+        querystring = {
+            "region_id": region_id,
+            "locale": "en_GB",
+            "checkin_date": checkin_date,
+            "checkout_date": checkout_date,
+            "adults_number": "1",  
+            "page_number": "1" ,
+            "domain":'AE',
+            "sort_order": 'REVIEW',
+        }
+
+        headers = {
+            "X-RapidAPI-Key": rapidapi_key,
+            "X-RapidAPI-Host": "hotels-com-provider.p.rapidapi.com"
+        }
+
+        response = requests.get(url, headers=headers, params=querystring)
+
+        if response.status_code == 200:
+            return response.json()  
+        else:
+            return None 
+
+    
+
+    def get_region_id(self, destination, rapidapi_key):
+        url = "https://hotels-com-provider.p.rapidapi.com/v2/regions"
+        querystring = {"query": destination, "domain": "AE", "locale": "en_GB"}
+        headers = {
+            "X-RapidAPI-Key": rapidapi_key,
+            "X-RapidAPI-Host": "hotels-com-provider.p.rapidapi.com"
+            }
+        response = requests.get(url, headers=headers, params=querystring)
+        regions = response.json() 
+        
+        if regions.get('data'):
+            for region_data in regions['data']:
+                if region_data.get('@type') == 'gaiaRegionResult' and region_data.get('type') == 'MULTICITY':  
+                    return region_data['gaiaId'] 
+                return None 
+            else:
+                return None 
 
     def extract_flight_details(self, xml_response):
         flight_details_list = []
